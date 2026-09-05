@@ -10,17 +10,18 @@ Route planning app for a Pennsylvania wine distributor operating from **Scranton
 - **Pittsburgh multi-day** — Tuesday 2:30 PM cutoff; Wednesday primary + Thursday overflow; truck stays out overnight (no warehouse return between days)
 - **Variable Wed threshold** — auto-suggested stop count for Pittsburgh; slider + drag-and-drop override
 - **Route Board** — drag-and-drop stop reordering and cross-segment moves for all routes (days for Pittsburgh, trucks for other territories)
-- **Live validation** — ETAs checked against 10 AM – 4 PM delivery windows, capacity, and driver hours
+- **Live validation** — ETAs checked against 10 AM – 4 PM delivery windows and driver hours
 - **10 AM first stop** — every delivery day starts at 10:00 AM; departure is back-calculated; remaining stops run back-to-back to finish as early as possible
 - **Weekly CSV upload** — import ordering customers with contact info and delivery instructions at the start of each week
 - **Google Maps drive times** — ETAs and route optimization use Google Maps Distance Matrix (traffic-aware for delivery day); falls back to estimates if no API key
+- **Live map** — road-following route lines from Google Directions API, updating as stops are reordered
 
 ## Google Maps setup
 
-Drive times between the warehouse and each account (and between stops) use the **Google Maps Distance Matrix API**.
+Drive times between the warehouse and each account (and between stops) use the **Google Maps Distance Matrix API**. Route map lines use the **Directions API**.
 
-1. Create a Google Cloud project and enable **Distance Matrix API**
-2. Create an API key and restrict it to Distance Matrix (server IP or unrestricted for local dev)
+1. Create a Google Cloud project and enable **Distance Matrix API** and **Directions API**
+2. Create an API key and restrict it appropriately (server IP or unrestricted for local dev)
 3. Copy `.env.example` to `.env` and set your key:
 
 ```bash
@@ -44,7 +45,7 @@ Upload your weekly export from the sidebar (**Upload CSV**) to get started — t
 | `Delivery instructions(...)` | Driver notes for that restaurant |
 | `Territory(...)` | One of your 8 PA territories |
 
-Addresses are geocoded automatically for routing (no lat/lng needed). Optional columns: `cases` (creates orders), `cycle` (Philadelphia 1 or 2).
+Addresses are geocoded automatically for routing (no lat/lng needed). Optional column: `cycle` (Philadelphia 1 or 2).
 
 Click **Download template** for a starter file with the correct headers.
 
