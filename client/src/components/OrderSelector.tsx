@@ -53,10 +53,10 @@ export default function OrderSelector({ onApplied, refreshKey = 0 }: OrderSelect
   const load = useCallback(() => {
     Promise.all([fetchUploadStatus(), fetchCustomerList()])
       .then(([status, list]) => {
-        const isCsv = status?.fromCsvUpload === true;
-        setFromCsv(isCsv);
+        const hasCustomers = list.length > 0;
+        setFromCsv(hasCustomers || status?.fromCsvUpload === true);
         setCsvFilename(status?.filename);
-        setCustomers(isCsv ? list : []);
+        setCustomers(list);
         const initial: SelectionState = {};
         for (const c of list) {
           const preselect = c.hasOrder || (c.cases > 0 && !c.hasOrder);
@@ -156,7 +156,9 @@ export default function OrderSelector({ onApplied, refreshKey = 0 }: OrderSelect
     return (
       <section className="order-selector order-selector--empty">
         <h2>Orders this week</h2>
-        <p className="order-selector__hint">Upload your weekly CSV above to select accounts for routing.</p>
+        <p className="order-selector__hint">
+          Upload a weekly CSV or add an order manually above.
+        </p>
       </section>
     );
   }
@@ -175,7 +177,7 @@ export default function OrderSelector({ onApplied, refreshKey = 0 }: OrderSelect
       <h2>Orders this week</h2>
       <p className="order-selector__hint">
         {csvFilename ? `${csvFilename} — ` : ""}
-        {customers.length} accounts from your CSV. Select which have orders this week.
+        {customers.length} account{customers.length !== 1 ? "s" : ""}. Select which have orders this week.
       </p>
 
       <input

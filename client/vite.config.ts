@@ -7,6 +7,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: dir,
+  base: process.env.PAGES_BASE ?? "./",
   build: {
     outDir: "dist",
     emptyOutDir: true,

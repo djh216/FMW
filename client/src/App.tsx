@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import CustomerUpload from "./components/CustomerUpload";
+import ManualOrderForm from "./components/ManualOrderForm";
 import OrderSelector from "./components/OrderSelector";
 import RoutePrintSheet from "./components/RoutePrintSheet";
 import RouteView from "./components/RouteView";
@@ -96,7 +97,8 @@ export default function App() {
   const handleOrdersApplied = useCallback(async () => {
     await loadBatches();
     setOrderListKey((k) => k + 1);
-  }, [loadBatches]);
+    handleCustomersLoaded();
+  }, [loadBatches, handleCustomersLoaded]);
 
   const handleReset = async () => {
     if (!selectedCycleId) return;
@@ -175,7 +177,9 @@ export default function App() {
         <CustomerUpload
           onUploaded={() => void handleOrdersApplied()}
           onCustomersLoaded={handleCustomersLoaded}
+          refreshKey={orderListKey}
         />
+        <ManualOrderForm onAdded={() => void handleOrdersApplied()} />
         <OrderSelector
           refreshKey={orderListKey}
           onApplied={() => void handleOrdersApplied()}

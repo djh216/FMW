@@ -10,9 +10,10 @@ import type { CustomerUploadSummary } from "@shared/types";
 interface CustomerUploadProps {
   onUploaded: () => void;
   onCustomersLoaded?: () => void;
+  refreshKey?: number;
 }
 
-export default function CustomerUpload({ onUploaded, onCustomersLoaded }: CustomerUploadProps) {
+export default function CustomerUpload({ onUploaded, onCustomersLoaded, refreshKey = 0 }: CustomerUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<CustomerUploadSummary | null>(null);
@@ -20,7 +21,7 @@ export default function CustomerUpload({ onUploaded, onCustomersLoaded }: Custom
 
   useEffect(() => {
     fetchUploadStatus().then(setStatus).catch(() => {});
-  }, []);
+  }, [refreshKey]);
 
   async function handleFile(file: File) {
     setUploading(true);

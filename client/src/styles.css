@@ -305,6 +305,73 @@ body {
   margin-top: 0.35rem;
 }
 
+.manual-order {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
+}
+
+.manual-order h2 {
+  margin-top: 0;
+}
+
+.manual-order__hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.manual-order__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.manual-order__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.manual-order__field input,
+.manual-order__field select,
+.manual-order__field textarea {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.manual-order__field textarea {
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.manual-order__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.manual-order__warn {
+  font-size: 0.75rem;
+  color: var(--warn);
+  margin: 0;
+}
+
+.manual-order__error {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
 .batch-list {
   list-style: none;
   display: flex;

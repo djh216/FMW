@@ -1,21 +1,7 @@
 import type { Customer } from "../../shared/types.js";
 import { normalizeContactFields } from "../../shared/contactFormat.js";
-import { TERRITORY_CYCLES } from "./territories.js";
+import { resolveTerritoryInput } from "./territories.js";
 import { resolveCoordinates } from "./geocoder.js";
-
-const TERRITORY_ALIASES: Record<string, string> = {
-  "northeast pa": "northeast-pa",
-  "lehigh valley": "lehigh-valley",
-  philadelphia: "philadelphia",
-  "northern philly suburbs": "northern-philly",
-  "northern philadelphia suburbs": "northern-philly",
-  "western philly suburbs": "western-philly",
-  "western philadelphia suburbs": "western-philly",
-  "southern susquehanna valley": "southern-susquehanna",
-  "southern susquenhanna valley": "southern-susquehanna",
-  "northern susquehanna valley": "northern-susquehanna",
-  pittsburgh: "pittsburgh",
-};
 
 /** Maps normalized header tokens to internal field names */
 const HEADER_ALIASES: Record<string, string> = {
@@ -152,16 +138,6 @@ function slugify(name: string, index: number): string {
   return base ? `${base}-${index}` : `customer-${index}`;
 }
 
-function resolveTerritoryId(raw: string): string | null {
-  const key = raw.trim().toLowerCase();
-  if (TERRITORY_ALIASES[key]) return TERRITORY_ALIASES[key];
-  const byId = TERRITORY_CYCLES.find((t) => t.territoryId === key.replace(/\s+/g, "-"));
-  if (byId) return byId.territoryId;
-  const byName = TERRITORY_CYCLES.find((t) => t.name.toLowerCase() === key);
-  if (byName) return byName.territoryId;
-  return null;
-}
-
 export async function parseCustomersCsv(
   csvText: string,
   referenceDate: Date
@@ -226,7 +202,7 @@ export async function parseCustomersCsv(
       continue;
     }
 
-    const territoryId = resolveTerritoryId(row.territory ?? "");
+    const territoryId = resolveTerritoryInput(row.territory ?? "");
     if (!territoryId) {
       errors.push(`Row ${rowIdx + 1} (${name}): unknown territory "${row.territory}"`);
       continue;

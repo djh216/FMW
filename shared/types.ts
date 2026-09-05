@@ -75,6 +75,19 @@ export interface OrderSelectionInput {
   cycle?: number;
 }
 
+/** Manual order entry — same fields as weekly CSV rows */
+export interface ManualOrderInput {
+  restaurantName: string;
+  address: string;
+  city: string;
+  contactName: string;
+  contactPhone: string;
+  deliveryInstructions: string;
+  territoryId: string;
+  /** Philadelphia only: 1 = Wed run, 2 = Thu run */
+  cycle?: number;
+}
+
 export interface Order {
   id: string;
   customerId: string;

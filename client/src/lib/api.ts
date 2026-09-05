@@ -1,6 +1,6 @@
-import type { BatchSummary, CustomerListItem, CustomerUploadSummary, OrderSelectionInput, RoutePlan } from "@shared/types";
+import type { BatchSummary, CustomerListItem, CustomerUploadSummary, ManualOrderInput, OrderSelectionInput, RoutePlan } from "@shared/types";
 
-const API = "/api";
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export async function fetchBatches(): Promise<BatchSummary[]> {
   const res = await fetch(`${API}/batches`);
@@ -35,6 +35,24 @@ export async function fetchCustomerList(): Promise<CustomerListItem[]> {
   const res = await fetch(`${API}/customers`);
   if (!res.ok) throw new Error("Failed to load customers");
   return res.json();
+}
+
+export async function fetchTerritories(): Promise<{ territoryId: string; name: string }[]> {
+  const res = await fetch(`${API}/territories`);
+  if (!res.ok) throw new Error("Failed to load territories");
+  return res.json();
+}
+
+export async function addManualOrder(input: ManualOrderInput): Promise<CustomerUploadSummary> {
+  const res = await fetch(`${API}/customers/manual`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = (await res.json()) as CustomerUploadSummary;
+  if (!res.ok && data.errors?.length) return data;
+  if (!res.ok) throw new Error("Failed to add manual order");
+  return data;
 }
 
 export async function applyOrderSelection(

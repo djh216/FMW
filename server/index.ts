@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import { TERRITORY_CYCLES } from "./data/territories.js";
 import {
   applyOrderSelection,
+  addManualOrder,
   getCustomerListItems,
   getOrders,
   getUploadSummary,
@@ -14,6 +15,7 @@ import {
   clearCustomerData,
 } from "./data/customer-store.js";
 import { CSV_TEMPLATE } from "./data/csv-parser.js";
+import { uniqueTerritories } from "./data/territories.js";
 import {
   applySegmentStops,
   appendTruckSegment,
@@ -32,7 +34,7 @@ import {
   createEstimatedTravelMatrix,
   type TravelMatrix,
 } from "./routing/travel-time.js";
-import type { OrderSelectionInput, RoutePlan, StopAssignment } from "../shared/types.js";
+import type { ManualOrderInput, OrderSelectionInput, RoutePlan, StopAssignment } from "../shared/types.js";
 import { SCRANTON_DEPOT } from "../shared/constants.js";
 
 const app = express();
@@ -79,6 +81,10 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.get("/api/territories", (_req, res) => {
+  res.json(uniqueTerritories());
+});
+
+app.get("/api/territories/cycles", (_req, res) => {
   res.json(TERRITORY_CYCLES);
 });
 
@@ -119,6 +125,23 @@ app.post("/api/customers/reset", (_req, res) => {
   const summary = clearCustomerData();
   clearRoutePlans();
   res.json(summary);
+});
+
+app.post("/api/customers/manual", async (req, res) => {
+  const input = req.body as ManualOrderInput;
+  try {
+    const summary = await addManualOrder(input, REFERENCE_DATE);
+    if (summary.errors.length === 0) clearRoutePlans();
+    res.status(summary.errors.length > 0 ? 400 : 200).json(summary);
+  } catch (e) {
+    res.status(500).json({
+      uploadedAt: new Date().toISOString(),
+      customerCount: 0,
+      orderCount: 0,
+      errors: [e instanceof Error ? e.message : "Failed to add order"],
+      warnings: [],
+    });
+  }
 });
 
 app.post("/api/orders/selection", (req, res) => {

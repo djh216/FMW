@@ -114,6 +114,42 @@ export const TERRITORY_CYCLES: TerritoryCycle[] = [
   },
 ];
 
+const TERRITORY_ALIASES: Record<string, string> = {
+  "northeast pa": "northeast-pa",
+  "lehigh valley": "lehigh-valley",
+  philadelphia: "philadelphia",
+  "northern philly suburbs": "northern-philly",
+  "northern philadelphia suburbs": "northern-philly",
+  "western philly suburbs": "western-philly",
+  "western philadelphia suburbs": "western-philly",
+  "southern susquehanna valley": "southern-susquehanna",
+  "southern susquenhanna valley": "southern-susquehanna",
+  "northern susquehanna valley": "northern-susquehanna",
+  pittsburgh: "pittsburgh",
+};
+
+/** Resolve territory name or id from CSV/manual input */
+export function resolveTerritoryInput(raw: string): string | null {
+  const key = raw.trim().toLowerCase();
+  if (TERRITORY_ALIASES[key]) return TERRITORY_ALIASES[key];
+  const byId = TERRITORY_CYCLES.find((t) => t.territoryId === key.replace(/\s+/g, "-"));
+  if (byId) return byId.territoryId;
+  const byName = TERRITORY_CYCLES.find((t) => t.name.toLowerCase() === key);
+  if (byName) return byName.territoryId;
+  return null;
+}
+
+export function uniqueTerritories(): { territoryId: string; name: string }[] {
+  const seen = new Set<string>();
+  const result: { territoryId: string; name: string }[] = [];
+  for (const cycle of TERRITORY_CYCLES) {
+    if (seen.has(cycle.territoryId)) continue;
+    seen.add(cycle.territoryId);
+    result.push({ territoryId: cycle.territoryId, name: cycle.name });
+  }
+  return result;
+}
+
 export function getCycleById(id: string): TerritoryCycle | undefined {
   return TERRITORY_CYCLES.find((c) => c.id === id);
 }

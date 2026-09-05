@@ -30,6 +30,27 @@ GOOGLE_MAPS_API_KEY=your_key_here
 
 Restart the API server after setting the key. Without it, the app uses straight-line distance estimates at 45 mph.
 
+## GitHub Pages (dashboard hosting)
+
+The built dashboard is published as static files at the repo root:
+
+- `index.html` — entry point for GitHub Pages
+- `assets/` — compiled JS/CSS
+
+Regenerate after UI changes:
+
+```bash
+npm run build:pages
+```
+
+**Enable Pages:** GitHub repo → Settings → Pages → Source: **GitHub Actions** (workflow deploys on push to `main`).
+
+Or serve from the **main** branch root if you commit `index.html` and `assets/` directly.
+
+**Custom domain:** Set `fmwlogistics.com` under Pages settings after adding the DNS TXT verification record.
+
+**API note:** GitHub Pages serves the frontend only. Run the Node API separately (`npm start`) and set repository variable `VITE_API_URL` (e.g. `https://api.fmwlogistics.com/api`) so the hosted dashboard can reach it.
+
 When a route is built, drive times are fetched once for all stops in that territory batch and cached for drag-and-drop updates.
 
 ## Weekly customer CSV
