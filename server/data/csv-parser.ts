@@ -269,8 +269,3 @@ export async function parseCustomersCsv(
 
   return { customers, suggestedCases, suggestedCycles, errors, warnings };
 }
-
-export const CSV_TEMPLATE = `name,street 1 (Address - Street 1),City(Address - City),phone numbers,Delivery instructions(specific delivery instructions for that restaurant),Territory(Which Territory the restaurant is in)
-Blue Table Restaurant,123 Market St,Philadelphia,Maria 215-555-0101,Use rear loading dock before 11am,Philadelphia
-Strip District Market,2100 Penn Ave,Pittsburgh,James 412-555-0202,Call 30 min ahead; gate code 4521,Pittsburgh
-`;

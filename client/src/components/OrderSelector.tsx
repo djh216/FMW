@@ -59,9 +59,8 @@ export default function OrderSelector({ onApplied, refreshKey = 0 }: OrderSelect
         setCustomers(list);
         const initial: SelectionState = {};
         for (const c of list) {
-          const preselect = c.hasOrder || (c.cases > 0 && !c.hasOrder);
           initial[c.id] = {
-            selected: preselect,
+            selected: c.hasOrder,
             cycle: c.cycle ?? 1,
           };
         }
@@ -157,7 +156,7 @@ export default function OrderSelector({ onApplied, refreshKey = 0 }: OrderSelect
       <section className="order-selector order-selector--empty">
         <h2>Orders this week</h2>
         <p className="order-selector__hint">
-          Upload a weekly CSV or add an order manually above.
+          Upload a weekly CSV or add an order manually below.
         </p>
       </section>
     );

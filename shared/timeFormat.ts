@@ -1,3 +1,13 @@
+/** Format a duration in minutes as "2h 15m" or "45 min". */
+export function formatDurationMinutes(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m} min`;
+}
+
 /** Format minutes since midnight as "10:00 AM" / "2:30 PM". */
 export function formatMinutesAsTime(minutes: number): string {
   const normalized = ((Math.floor(minutes) % (24 * 60)) + 24 * 60) % (24 * 60);

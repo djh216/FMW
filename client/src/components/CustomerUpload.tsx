@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  downloadCustomerTemplate,
   fetchUploadStatus,
   resetCustomers,
   uploadCustomersCsv,
@@ -88,9 +87,6 @@ export default function CustomerUpload({ onUploaded, onCustomersLoaded, refreshK
           onClick={() => inputRef.current?.click()}
         >
           {uploading ? "Uploading…" : "Upload CSV"}
-        </button>
-        <button type="button" className="btn btn--secondary btn--block" onClick={downloadCustomerTemplate}>
-          Download template
         </button>
         {status && status.customerCount > 0 && (
           <button

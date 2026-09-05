@@ -8,7 +8,9 @@ import {
   addTruck,
   fetchBatches,
   fetchRoutePlan,
+  clearRouteOrders,
   lockRoute,
+  removeOrderForCustomer,
   resetRoute,
   unlockRoute,
   setWedThreshold,
@@ -94,11 +96,60 @@ export default function App() {
     setOrderListKey((k) => k + 1);
   }, []);
 
+  const refreshAfterOrderChange = useCallback(async (cycleId: string | null) => {
+    const b = await fetchBatches();
+    setBatches(b);
+    const nextId =
+      cycleId && b.some((x) => x.cycleId === cycleId) ? cycleId : (b[0]?.cycleId ?? null);
+    setSelectedCycleId(nextId);
+    if (!nextId) {
+      setPlan(null);
+      setPreviewSegments(null);
+      setActiveStopId(null);
+      return;
+    }
+    const updated = await fetchRoutePlan(nextId);
+    setPlan(updated);
+  }, []);
+
   const handleOrdersApplied = useCallback(async () => {
-    await loadBatches();
+    await refreshAfterOrderChange(selectedCycleId);
     setOrderListKey((k) => k + 1);
     handleCustomersLoaded();
-  }, [loadBatches, handleCustomersLoaded]);
+  }, [refreshAfterOrderChange, selectedCycleId, handleCustomersLoaded]);
+
+  const handleRemoveStop = useCallback(
+    async (customerId: string) => {
+      const summary = await removeOrderForCustomer(customerId);
+      if (summary.errors.length > 0) {
+        setError(summary.errors.join(" · "));
+        return;
+      }
+      await refreshAfterOrderChange(selectedCycleId);
+      setOrderListKey((k) => k + 1);
+    },
+    [refreshAfterOrderChange, selectedCycleId]
+  );
+
+  const handleStopAdded = useCallback(async (updatedPlan: RoutePlan) => {
+    setPlan(updatedPlan);
+    setPreviewSegments(null);
+    setActiveStopId(null);
+    const b = await fetchBatches();
+    setBatches(b);
+    setOrderListKey((k) => k + 1);
+  }, []);
+
+  const handleClearRoute = useCallback(async () => {
+    if (!selectedCycleId) return;
+    const summary = await clearRouteOrders(selectedCycleId);
+    if (summary.errors.length > 0) {
+      setError(summary.errors.join(" · "));
+      return;
+    }
+    await refreshAfterOrderChange(selectedCycleId);
+    setOrderListKey((k) => k + 1);
+  }, [refreshAfterOrderChange, selectedCycleId]);
 
   const handleReset = async () => {
     if (!selectedCycleId) return;
@@ -147,7 +198,7 @@ export default function App() {
           >
             Reset to suggested
           </button>
-          {plan?.status === "locked" && selectedBatch && (
+          {plan && selectedBatch && (
             <button
               type="button"
               className="btn btn--secondary"
@@ -179,11 +230,11 @@ export default function App() {
           onCustomersLoaded={handleCustomersLoaded}
           refreshKey={orderListKey}
         />
-        <ManualOrderForm onAdded={() => void handleOrdersApplied()} />
         <OrderSelector
           refreshKey={orderListKey}
           onApplied={() => void handleOrdersApplied()}
         />
+        <ManualOrderForm onAdded={() => void handleOrdersApplied()} />
         <h2>Territories</h2>
         {batches.length === 0 ? (
           <p className="sidebar__empty">No routes yet — upload a CSV and apply orders.</p>
@@ -242,6 +293,9 @@ export default function App() {
               onUpdate={handleUpdate}
               onPreviewSegments={setPreviewSegments}
               onActiveStopChange={setActiveStopId}
+              onRemoveStop={(customerId) => void handleRemoveStop(customerId)}
+              onClearRoute={() => void handleClearRoute()}
+              onStopAdded={handleStopAdded}
               onWedThresholdChange={
                 plan.segments.some((s) => s.segmentType === "day")
                   ? handleWedThreshold
@@ -260,7 +314,7 @@ export default function App() {
         )}
       </main>
     </div>
-    {plan?.status === "locked" && selectedBatch && (
+    {plan && selectedBatch && (
       <RoutePrintSheet plan={plan} batch={selectedBatch} />
     )}
     </>

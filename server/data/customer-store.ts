@@ -1,4 +1,6 @@
 import type {
+  AddStopInput,
+  AddStopResult,
   Customer,
   CustomerListItem,
   CustomerUploadSummary,
@@ -9,6 +11,7 @@ import type {
 import { parseCustomersCsv } from "./csv-parser.js";
 import {
   cycleNumberFromId,
+  getCycleById,
   getTerritoryDisplayName,
   resolveCycleId,
   resolveTerritoryInput,
@@ -132,10 +135,71 @@ function uniqueCustomerId(name: string): string {
   return id;
 }
 
-export async function addManualOrder(
-  input: ManualOrderInput,
+export function getAvailableCustomersForCycle(cycleId: string): CustomerListItem[] {
+  const cycle = getCycleById(cycleId);
+  if (!cycle) return [];
+
+  const onRoute = new Set(
+    orders.filter((o) => o.cycleId === cycleId).map((o) => o.customerId)
+  );
+
+  return getCustomerListItems().filter(
+    (c) => c.territoryId === cycle.territoryId && !onRoute.has(c.id)
+  );
+}
+
+function pushOrderForCustomer(
+  customer: Customer,
+  cycleId: string,
   referenceDate: Date
-): Promise<CustomerUploadSummary> {
+): void {
+  orders.push({
+    id: `order-${customer.id}-${Date.now()}`,
+    customerId: customer.id,
+    territoryId: customer.territoryId,
+    cycleId,
+    cases: MIN_ORDER_CASES,
+    approvedAt: defaultApprovedAt(cycleId, referenceDate),
+    status: "approved",
+  });
+}
+
+function buildSummaryFromErrors(
+  errors: string[],
+  warnings: string[]
+): CustomerUploadSummary {
+  return {
+    uploadedAt: new Date().toISOString(),
+    customerCount: customers.length,
+    orderCount: orders.length,
+    filename: uploadSummary?.filename,
+    errors,
+    warnings,
+    awaitingOrderSelection: awaitingOrderSelection,
+    fromCsvUpload: fromCsvUpload || customers.length > 0,
+  };
+}
+
+function finalizeOrderSummary(warnings: string[]): CustomerUploadSummary {
+  fromCsvUpload = true;
+  awaitingOrderSelection = false;
+  uploadSummary = {
+    uploadedAt: new Date().toISOString(),
+    customerCount: customers.length,
+    orderCount: orders.length,
+    filename: uploadSummary?.filename,
+    errors: [],
+    warnings,
+    awaitingOrderSelection: false,
+    fromCsvUpload: true,
+  };
+  return uploadSummary;
+}
+
+async function createManualCustomer(
+  input: ManualOrderInput,
+  forceCycleId?: string
+): Promise<{ customer?: Customer; cycleId?: string; warnings: string[]; errors: string[] }> {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -160,16 +224,15 @@ export async function addManualOrder(
   if (!contactName) warnings.push("Contact name is missing");
   if (!contactPhone) warnings.push("Phone number is missing or could not be parsed");
 
-  if (errors.length > 0) {
+  if (errors.length > 0) return { warnings, errors };
+
+  let cycleId: string;
+  try {
+    cycleId = forceCycleId ?? resolveCycleId(territoryId!, input.cycle ?? 1);
+  } catch {
     return {
-      uploadedAt: new Date().toISOString(),
-      customerCount: customers.length,
-      orderCount: orders.length,
-      filename: uploadSummary?.filename,
-      errors,
       warnings,
-      awaitingOrderSelection: awaitingOrderSelection,
-      fromCsvUpload: fromCsvUpload || customers.length > 0,
+      errors: [`Could not assign delivery cycle for ${restaurantName}`],
     };
   }
 
@@ -180,9 +243,8 @@ export async function addManualOrder(
     );
   }
 
-  const id = uniqueCustomerId(restaurantName);
   const customer: Customer = {
-    id,
+    id: uniqueCustomerId(restaurantName),
     name: restaurantName,
     address,
     city,
@@ -195,48 +257,71 @@ export async function addManualOrder(
   };
 
   customers.push(customer);
+  return { customer, cycleId, warnings, errors };
+}
 
-  let cycleId: string;
-  try {
-    cycleId = resolveCycleId(territoryId!, input.cycle ?? 1);
-  } catch {
-    return {
-      uploadedAt: new Date().toISOString(),
-      customerCount: customers.length,
-      orderCount: orders.length,
-      filename: uploadSummary?.filename,
-      errors: [`Could not assign delivery cycle for ${restaurantName}`],
-      warnings,
-      awaitingOrderSelection: false,
-      fromCsvUpload: true,
-    };
+export async function addManualOrder(
+  input: ManualOrderInput,
+  referenceDate: Date
+): Promise<CustomerUploadSummary> {
+  const created = await createManualCustomer(input);
+  if (created.errors.length > 0) {
+    return buildSummaryFromErrors(created.errors, created.warnings);
   }
 
-  orders.push({
-    id: `order-${customer.id}-${Date.now()}`,
-    customerId: customer.id,
-    territoryId: customer.territoryId,
-    cycleId,
-    cases: MIN_ORDER_CASES,
-    approvedAt: defaultApprovedAt(cycleId, referenceDate),
-    status: "approved",
-  });
+  pushOrderForCustomer(created.customer!, created.cycleId!, referenceDate);
+  return finalizeOrderSummary(created.warnings);
+}
 
-  fromCsvUpload = true;
-  awaitingOrderSelection = false;
+export async function addStopToRoute(
+  cycleId: string,
+  input: AddStopInput,
+  referenceDate: Date
+): Promise<AddStopResult> {
+  const cycle = getCycleById(cycleId);
+  if (!cycle) {
+    const errors = ["Unknown route"];
+    return { summary: buildSummaryFromErrors(errors, []), errors, warnings: [] };
+  }
 
-  uploadSummary = {
-    uploadedAt: new Date().toISOString(),
-    customerCount: customers.length,
-    orderCount: orders.length,
-    filename: uploadSummary?.filename,
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if ("customerId" in input && input.customerId) {
+    const customer = getCustomerById(input.customerId);
+    if (!customer) {
+      errors.push("Customer not found");
+    } else if (customer.territoryId !== cycle.territoryId) {
+      errors.push(`${customer.name} is not in this territory`);
+    } else if (orders.some((o) => o.customerId === customer.id && o.cycleId === cycleId)) {
+      errors.push(`${customer.name} is already on this route`);
+    } else {
+      pushOrderForCustomer(customer, cycleId, referenceDate);
+    }
+  } else {
+    const manual = input as ManualOrderInput;
+    const territoryId = resolveTerritoryInput(manual.territoryId ?? "");
+    if (territoryId !== cycle.territoryId) {
+      errors.push("Territory must match the current route");
+    } else {
+      const created = await createManualCustomer(manual, cycleId);
+      warnings.push(...created.warnings);
+      errors.push(...created.errors);
+      if (created.errors.length === 0 && created.customer) {
+        pushOrderForCustomer(created.customer, cycleId, referenceDate);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    return { summary: buildSummaryFromErrors(errors, warnings), errors, warnings };
+  }
+
+  return {
+    summary: finalizeOrderSummary(warnings),
     errors: [],
     warnings,
-    awaitingOrderSelection: false,
-    fromCsvUpload: true,
   };
-
-  return uploadSummary;
 }
 
 export function applyOrderSelection(
@@ -277,6 +362,8 @@ export function applyOrderSelection(
     }
   });
 
+  suggestedCases = {};
+  suggestedCycles = {};
   awaitingOrderSelection = false;
 
   uploadSummary = {
@@ -291,6 +378,35 @@ export function applyOrderSelection(
   };
 
   return uploadSummary;
+}
+
+function ordersToSelections(): OrderSelectionInput[] {
+  return orders.map((o) => ({
+    customerId: o.customerId,
+    cases: o.cases,
+    cycle: cycleNumberFromId(o.cycleId),
+  }));
+}
+
+export function removeOrderForCustomer(
+  customerId: string,
+  referenceDate: Date
+): CustomerUploadSummary {
+  const remaining = ordersToSelections().filter((s) => s.customerId !== customerId);
+  return applyOrderSelection(remaining, referenceDate);
+}
+
+export function clearOrdersForCycle(cycleId: string, referenceDate: Date): CustomerUploadSummary {
+  const remaining = ordersToSelections().filter((s) => {
+    const customer = getCustomerById(s.customerId);
+    if (!customer) return true;
+    try {
+      return resolveCycleId(customer.territoryId, s.cycle ?? 1) !== cycleId;
+    } catch {
+      return true;
+    }
+  });
+  return applyOrderSelection(remaining, referenceDate);
 }
 
 export function clearCustomerData(): CustomerUploadSummary {

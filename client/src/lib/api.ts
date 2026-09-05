@@ -1,4 +1,4 @@
-import type { BatchSummary, CustomerListItem, CustomerUploadSummary, ManualOrderInput, OrderSelectionInput, RoutePlan } from "@shared/types";
+import type { AddStopInput, BatchSummary, CustomerListItem, CustomerUploadSummary, ManualOrderInput, OrderSelectionInput, RoutePlan } from "@shared/types";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -69,8 +69,54 @@ export async function applyOrderSelection(
   return data;
 }
 
-export function downloadCustomerTemplate() {
-  window.open(`${API}/customers/template.csv`, "_blank");
+export async function removeOrderForCustomer(customerId: string): Promise<CustomerUploadSummary> {
+  const res = await fetch(`${API}/orders/customer/${encodeURIComponent(customerId)}`, {
+    method: "DELETE",
+  });
+  const data = (await res.json()) as CustomerUploadSummary;
+  if (!res.ok && data.errors?.length) return data;
+  if (!res.ok) throw new Error("Failed to remove order");
+  return data;
+}
+
+export async function clearRouteOrders(cycleId: string): Promise<CustomerUploadSummary> {
+  const res = await fetch(`${API}/routes/${encodeURIComponent(cycleId)}/orders`, {
+    method: "DELETE",
+  });
+  const data = (await res.json()) as CustomerUploadSummary;
+  if (!res.ok && data.errors?.length) return data;
+  if (!res.ok) throw new Error("Failed to clear route");
+  return data;
+}
+
+export async function fetchAvailableCustomersForRoute(
+  cycleId: string
+): Promise<CustomerListItem[]> {
+  const res = await fetch(`${API}/routes/${encodeURIComponent(cycleId)}/available-customers`);
+  if (!res.ok) throw new Error("Failed to load available customers");
+  return res.json();
+}
+
+export interface AddStopResponse {
+  summary: CustomerUploadSummary;
+  plan: RoutePlan;
+  errors: string[];
+  warnings: string[];
+}
+
+export async function addStopToRoute(
+  cycleId: string,
+  input: AddStopInput
+): Promise<AddStopResponse> {
+  const res = await fetch(`${API}/routes/${encodeURIComponent(cycleId)}/add-stop`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = (await res.json()) as AddStopResponse;
+  if (!res.ok && data.errors?.length) return data;
+  if (!res.ok) throw new Error("Failed to add stop to route");
+  return data;
 }
 
 export async function fetchRoutePlan(cycleId: string): Promise<RoutePlan> {

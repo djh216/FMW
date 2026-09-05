@@ -88,6 +88,17 @@ export interface ManualOrderInput {
   cycle?: number;
 }
 
+/** Add an existing account or new manual entry to a specific route cycle */
+export type AddStopInput =
+  | ManualOrderInput
+  | { customerId: string };
+
+export interface AddStopResult {
+  summary: CustomerUploadSummary;
+  errors: string[];
+  warnings: string[];
+}
+
 export interface Order {
   id: string;
   customerId: string;
@@ -126,6 +137,10 @@ export interface SegmentValidation {
   totalCases: number;
   stopCount: number;
   totalMiles: number;
+  /** Total driving minutes (depot/start → stops → return if applicable) */
+  totalDriveMinutes?: number;
+  /** Total minutes from departure through last stop/return (drive + service) */
+  totalRouteMinutes?: number;
   /** Google Maps (or estimated) drive minutes from previous location to each stop */
   stopDriveMinutes?: Record<string, number>;
   warnings: string[];

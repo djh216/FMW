@@ -372,6 +372,91 @@ body {
   margin: 0;
 }
 
+.add-stop-panel {
+  position: relative;
+}
+
+.add-stop-panel__form {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 280px;
+}
+
+.add-stop-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.add-stop-panel__close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.add-stop-panel__modes {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.add-stop-panel__modes label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+
+.add-stop-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.add-stop-panel__field input,
+.add-stop-panel__field select,
+.add-stop-panel__field textarea {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.add-stop-panel__hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.add-stop-panel__warn {
+  font-size: 0.75rem;
+  color: var(--warn);
+  margin: 0;
+}
+
+.add-stop-panel__error {
+  font-size: 0.75rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
 .batch-list {
   list-style: none;
   display: flex;
@@ -698,10 +783,24 @@ body {
 
 .segment-column__stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   font-size: 0.78rem;
   color: var(--muted);
   margin-top: 0.35rem;
+}
+
+.segment-column__total-time {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0.4rem 0 0;
+}
+
+.segment-column__total-time-detail {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .segment-column__first-stop {
@@ -824,6 +923,31 @@ body {
   color: var(--success);
 }
 
+.stop-card__remove {
+  flex-shrink: 0;
+  align-self: flex-start;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stop-card__remove:hover:not(:disabled) {
+  color: #fca5a5;
+  border-color: var(--error);
+}
+
+.stop-card__remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ——— Locked route PDF print (1 page wide, multi-page tall) ——— */
 .route-print-sheet {
   display: none;
@@ -908,10 +1032,14 @@ body.route-print-active .route-print-sheet {
   .route-print-table th,
   .route-print-table td {
     border: 1px solid #ccc;
-    padding: 0.2rem 0.3rem;
+    padding: 0.25rem 0.35rem;
     vertical-align: top;
     text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
     word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
   }
 
   .route-print-table th {
@@ -920,34 +1048,47 @@ body.route-print-active .route-print-sheet {
     font-weight: 600;
   }
 
+  /* # */
   .route-print-table th:nth-child(1),
   .route-print-table td:nth-child(1) {
-    width: 5%;
+    width: 4%;
   }
 
+  /* Restaurant */
   .route-print-table th:nth-child(2),
   .route-print-table td:nth-child(2) {
-    width: 18%;
+    width: 15%;
   }
 
+  /* Contact */
   .route-print-table th:nth-child(3),
   .route-print-table td:nth-child(3) {
-    width: 18%;
+    width: 15%;
   }
 
+  /* ETA */
   .route-print-table th:nth-child(4),
-  .route-print-table td:nth-child(4) {
-    width: 7%;
+  .route-print-table td:nth-child(4),
+  .route-print-table__eta {
+    width: 12%;
+    min-width: 0.75in;
+    white-space: nowrap;
   }
 
+  .route-print-table__eta {
+    font-size: 8.5pt;
+  }
+
+  /* Delivery instructions — widest column */
   .route-print-table th:nth-child(5),
-  .route-print-table td:nth-child(5) {
-    width: 8%;
+  .route-print-table td:nth-child(5),
+  .route-print-table__instructions {
+    width: 54%;
   }
 
-  .route-print-table th:nth-child(6),
-  .route-print-table td:nth-child(6) {
-    width: 44%;
+  .route-print-table__instructions {
+    font-size: 8.5pt;
+    line-height: 1.4;
   }
 
   .route-print-table thead {
@@ -955,6 +1096,10 @@ body.route-print-active .route-print-sheet {
   }
 
   .route-print-stop {
-    page-break-inside: avoid;
+    page-break-inside: auto;
+  }
+
+  .route-print-stop td {
+    page-break-inside: auto;
   }
 }

@@ -12,6 +12,9 @@ interface RouteViewProps {
   onUpdate: (segments: SegmentUpdate[]) => void;
   onPreviewSegments: (segments: SegmentUpdate[] | null) => void;
   onActiveStopChange: (stopId: string | null) => void;
+  onRemoveStop?: (customerId: string) => void;
+  onClearRoute?: () => void;
+  onStopAdded?: (plan: RoutePlan) => void;
   onWedThresholdChange?: (n: number) => void;
   onAddTruck?: () => void;
 }
@@ -24,6 +27,9 @@ export default function RouteView({
   onUpdate,
   onPreviewSegments,
   onActiveStopChange,
+  onRemoveStop,
+  onClearRoute,
+  onStopAdded,
   onWedThresholdChange,
   onAddTruck,
 }: RouteViewProps) {
@@ -48,6 +54,9 @@ export default function RouteView({
         onUpdate={onUpdate}
         onPreviewSegments={onPreviewSegments}
         onActiveStopChange={onActiveStopChange}
+        onRemoveStop={onRemoveStop}
+        onClearRoute={onClearRoute}
+        onStopAdded={onStopAdded}
         onWedThresholdChange={onWedThresholdChange}
         onAddTruck={onAddTruck}
       />

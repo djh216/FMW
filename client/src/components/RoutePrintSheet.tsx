@@ -24,7 +24,7 @@ export default function RoutePrintSheet({ plan, batch }: RoutePrintSheetProps) {
           {batch.multiDay ? " · Multi-day route" : " · Same-day return to Scranton"}
         </p>
         <p className="route-print-sheet__meta route-print-sheet__locked">
-          LOCKED ROUTE · Printed {printedAt}
+          {plan.status === "locked" ? "LOCKED ROUTE · " : ""}Printed {printedAt}
         </p>
       </header>
 
@@ -77,8 +77,10 @@ export default function RoutePrintSheet({ plan, batch }: RoutePrintSheetProps) {
                           contactPhone={stop.contactPhone}
                         />
                       </td>
-                      <td>{v.stopEtas[stop.id] ?? "—"}</td>
-                      <td>{stop.deliveryInstructions || "—"}</td>
+                      <td className="route-print-table__eta">{v.stopEtas[stop.id] ?? "—"}</td>
+                      <td className="route-print-table__instructions">
+                        {stop.deliveryInstructions || "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

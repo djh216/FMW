@@ -8,13 +8,16 @@ import { TERRITORY_CYCLES } from "./data/territories.js";
 import {
   applyOrderSelection,
   addManualOrder,
+  addStopToRoute,
+  clearOrdersForCycle,
+  getAvailableCustomersForCycle,
   getCustomerListItems,
   getOrders,
   getUploadSummary,
   importWeeklyCustomersCsv,
   clearCustomerData,
+  removeOrderForCustomer,
 } from "./data/customer-store.js";
-import { CSV_TEMPLATE } from "./data/csv-parser.js";
 import { uniqueTerritories } from "./data/territories.js";
 import {
   applySegmentStops,
@@ -48,6 +51,13 @@ const travelMatrices = new Map<string, TravelMatrix>();
 function clearRoutePlans() {
   routePlans.clear();
   travelMatrices.clear();
+  clearTravelTimeCache();
+  clearRouteGeometryCache();
+}
+
+function invalidateRoutePlan(cycleId: string) {
+  routePlans.delete(cycleId);
+  travelMatrices.delete(cycleId);
   clearTravelTimeCache();
   clearRouteGeometryCache();
 }
@@ -94,12 +104,6 @@ app.get("/api/customers", (_req, res) => {
 
 app.get("/api/customers/status", (_req, res) => {
   res.json(getUploadSummary());
-});
-
-app.get("/api/customers/template.csv", (_req, res) => {
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", 'attachment; filename="customers-template.csv"');
-  res.send(CSV_TEMPLATE);
 });
 
 app.post("/api/customers/upload", express.text({ type: ["text/csv", "text/plain", "*/*"], limit: "5mb" }), async (req, res) => {
@@ -149,6 +153,51 @@ app.post("/api/orders/selection", (req, res) => {
   const summary = applyOrderSelection(selections ?? [], REFERENCE_DATE);
   if (summary.errors.length === 0) clearRoutePlans();
   res.status(summary.errors.length > 0 ? 400 : 200).json(summary);
+});
+
+app.delete("/api/orders/customer/:customerId", async (req, res) => {
+  const existing = getOrders().find((o) => o.customerId === req.params.customerId);
+  const summary = removeOrderForCustomer(req.params.customerId, REFERENCE_DATE);
+  if (summary.errors.length === 0) {
+    if (existing) invalidateRoutePlan(existing.cycleId);
+    else clearRoutePlans();
+  }
+  res.status(summary.errors.length > 0 ? 400 : 200).json(summary);
+});
+
+app.delete("/api/routes/:cycleId/orders", async (req, res) => {
+  const summary = clearOrdersForCycle(req.params.cycleId, REFERENCE_DATE);
+  if (summary.errors.length === 0) invalidateRoutePlan(req.params.cycleId);
+  res.status(summary.errors.length > 0 ? 400 : 200).json(summary);
+});
+
+app.get("/api/routes/:cycleId/available-customers", (req, res) => {
+  res.json(getAvailableCustomersForCycle(req.params.cycleId));
+});
+
+app.post("/api/routes/:cycleId/add-stop", async (req, res) => {
+  try {
+    const result = await addStopToRoute(req.params.cycleId, req.body, REFERENCE_DATE);
+    if (result.errors.length > 0) {
+      res.status(400).json(result);
+      return;
+    }
+    invalidateRoutePlan(req.params.cycleId);
+    const plan = await buildAndCachePlan(req.params.cycleId);
+    res.json({ ...result, plan });
+  } catch (e) {
+    res.status(500).json({
+      summary: {
+        uploadedAt: new Date().toISOString(),
+        customerCount: 0,
+        orderCount: 0,
+        errors: [e instanceof Error ? e.message : "Failed to add stop"],
+        warnings: [],
+      },
+      errors: [e instanceof Error ? e.message : "Failed to add stop"],
+      warnings: [],
+    });
+  }
 });
 
 app.get("/api/batches", (_req, res) => {

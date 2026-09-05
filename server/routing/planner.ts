@@ -294,6 +294,8 @@ interface LegSimulation {
   departureTime: number;
   completionTime: number;
   totalMiles: number;
+  totalDriveMinutes: number;
+  totalRouteMinutes: number;
   stopEtas: Record<string, string>;
   stopDriveMinutes: Record<string, number>;
   warnings: string[];
@@ -323,6 +325,8 @@ function simulateLeg(
       departureTime: winStart,
       completionTime: winStart,
       totalMiles: 0,
+      totalDriveMinutes: 0,
+      totalRouteMinutes: 0,
       stopEtas,
       stopDriveMinutes,
       warnings,
@@ -333,6 +337,7 @@ function simulateLeg(
   const first = stopMap.get(stopIds[0])!;
   const travelToFirstMinutes = matrix.getDurationMinutes(start, stopPoint(first));
   stopDriveMinutes[stopIds[0]] = Math.round(travelToFirstMinutes);
+  let totalDriveMinutes = travelToFirstMinutes;
   const departureTime = winStart - travelToFirstMinutes;
 
   const orderedStops = stopIds
@@ -352,6 +357,7 @@ function simulateLeg(
     if (!stop) continue;
     const driveMinutes = matrix.getDurationMinutes(cur, stopPoint(stop));
     stopDriveMinutes[stopId] = Math.round(driveMinutes);
+    totalDriveMinutes += driveMinutes;
     t += driveMinutes;
     if (t > winEnd) {
       errors.push(`${stop.customerName}: ETA ${formatTime(t)} is after ${formatTimeOfDay(windowEnd)}`);
@@ -364,7 +370,9 @@ function simulateLeg(
   }
 
   if (returnToDepot) {
-    t += matrix.getDurationMinutes(cur, { lat: depot.lat, lng: depot.lng });
+    const returnMinutes = matrix.getDurationMinutes(cur, { lat: depot.lat, lng: depot.lng });
+    totalDriveMinutes += returnMinutes;
+    t += returnMinutes;
   }
 
   const driverHours = (t - departureTime) / 60;
@@ -381,6 +389,8 @@ function simulateLeg(
     departureTime,
     completionTime: t,
     totalMiles,
+    totalDriveMinutes: Math.round(totalDriveMinutes),
+    totalRouteMinutes: Math.round(t - departureTime),
     stopEtas,
     stopDriveMinutes,
     warnings,
@@ -487,6 +497,8 @@ function validateSegment(
     totalCases,
     stopCount: stopIds.length,
     totalMiles: Math.round(leg.totalMiles * 10) / 10,
+    totalDriveMinutes: leg.totalDriveMinutes,
+    totalRouteMinutes: leg.totalRouteMinutes,
     stopDriveMinutes: leg.stopDriveMinutes,
     warnings,
     errors,
@@ -616,7 +628,7 @@ export async function buildRoutePlan(
       stops: segStops,
     };
 
-    return { ...base, validation: { stopCount: 0, totalCases: 0, totalMiles: 0, warnings: [], errors: [], stopEtas: {} } };
+    return { ...base, validation: { stopCount: 0, totalCases: 0, totalMiles: 0, totalDriveMinutes: 0, totalRouteMinutes: 0, warnings: [], errors: [], stopEtas: {} } };
   });
 
   let prevLat = SCRANTON_DEPOT.lat;
@@ -855,6 +867,8 @@ export function appendTruckSegment(
       stopCount: 0,
       totalCases: 0,
       totalMiles: 0,
+      totalDriveMinutes: 0,
+      totalRouteMinutes: 0,
       warnings: [],
       errors: [],
       stopEtas: {},

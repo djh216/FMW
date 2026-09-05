@@ -13,15 +13,21 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
-import type { RoutePlan, Segment, Stop } from "@shared/types";
+import type { RoutePlan, Segment, SegmentValidation, Stop } from "@shared/types";
+import { SERVICE_MINUTES_PER_STOP } from "@shared/constants";
+import { formatDurationMinutes } from "@shared/timeFormat";
 import { computeSegmentUpdate, type SegmentUpdate } from "../lib/segmentDrag";
 import ContactDisplay from "./ContactDisplay";
+import AddStopPanel from "./AddStopPanel";
 
 interface RouteBoardProps {
   plan: RoutePlan;
   onUpdate: (segments: SegmentUpdate[]) => void;
   onPreviewSegments?: (segments: SegmentUpdate[] | null) => void;
   onActiveStopChange?: (stopId: string | null) => void;
+  onRemoveStop?: (customerId: string) => void;
+  onClearRoute?: () => void;
+  onStopAdded?: (plan: RoutePlan) => void;
   onWedThresholdChange?: (n: number) => void;
   onAddTruck?: () => void;
 }
@@ -31,11 +37,15 @@ function StopCard({
   eta,
   driveMinutes,
   hasError,
+  onRemove,
+  removeDisabled,
 }: {
   stop: Stop;
   eta?: string;
   driveMinutes?: number;
   hasError?: boolean;
+  onRemove?: () => void;
+  removeDisabled?: boolean;
 }) {
   return (
     <div className={`stop-card ${hasError ? "stop-card--error" : ""}`}>
@@ -56,6 +66,21 @@ function StopCard({
         )}
         {eta && <span className="stop-card__eta">ETA {eta}</span>}
       </div>
+      {onRemove && (
+        <button
+          type="button"
+          className="stop-card__remove"
+          disabled={removeDisabled}
+          title="Remove from route"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }
@@ -66,12 +91,14 @@ function SortableStop({
   driveMinutes,
   hasError,
   disabled,
+  onRemove,
 }: {
   stop: Stop;
   eta?: string;
   driveMinutes?: number;
   hasError?: boolean;
   disabled?: boolean;
+  onRemove?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: stop.id,
@@ -86,19 +113,38 @@ function SortableStop({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <StopCard stop={stop} eta={eta} driveMinutes={driveMinutes} hasError={hasError} />
+      <StopCard
+        stop={stop}
+        eta={eta}
+        driveMinutes={driveMinutes}
+        hasError={hasError}
+        onRemove={onRemove}
+        removeDisabled={disabled}
+      />
     </div>
   );
+}
+
+function segmentTotalMinutes(v: SegmentValidation): number {
+  if (v.totalRouteMinutes != null && v.totalRouteMinutes > 0) {
+    return v.totalRouteMinutes;
+  }
+  const drive =
+    v.totalDriveMinutes ??
+    Object.values(v.stopDriveMinutes ?? {}).reduce((sum, n) => sum + n, 0);
+  return drive + v.stopCount * SERVICE_MINUTES_PER_STOP;
 }
 
 function SegmentColumn({
   segment,
   stops,
   disabled,
+  onRemoveStop,
 }: {
   segment: Segment;
   stops: Stop[];
   disabled?: boolean;
+  onRemoveStop?: (customerId: string) => void;
 }) {
   const stopIds = stops.map((s) => s.id);
   const v = segment.validation;
@@ -114,6 +160,12 @@ function SegmentColumn({
           <span>{v.totalCases} cases</span>
           <span>{v.totalMiles} mi</span>
         </div>
+        {v.stopCount > 0 && (
+          <p className="segment-column__total-time">
+            Total time: {formatDurationMinutes(segmentTotalMinutes(v))}
+            <span className="segment-column__total-time-detail"> (drive + {SERVICE_MINUTES_PER_STOP} min/stop service)</span>
+          </p>
+        )}
         {v.stopCount > 0 && (
           <p className="segment-column__first-stop">First stop: 10:00 AM</p>
         )}
@@ -146,6 +198,7 @@ function SegmentColumn({
                 driveMinutes={driveMinutes}
                 hasError={hasError}
                 disabled={disabled}
+                onRemove={onRemoveStop ? () => onRemoveStop(stop.customerId) : undefined}
               />
             );
           })}
@@ -175,6 +228,9 @@ export default function RouteBoard({
   onUpdate,
   onPreviewSegments,
   onActiveStopChange,
+  onRemoveStop,
+  onClearRoute,
+  onStopAdded,
   onWedThresholdChange,
   onAddTruck,
 }: RouteBoardProps) {
@@ -261,8 +317,22 @@ export default function RouteBoard({
             + Add truck
           </button>
         )}
+        {onClearRoute && !isLocked && plan.allStops.length > 0 && (
+          <button type="button" className="btn btn--secondary" onClick={onClearRoute}>
+            Clear route
+          </button>
+        )}
+        {onStopAdded && (
+          <AddStopPanel
+            cycleId={plan.cycleId}
+            territoryId={plan.territoryId}
+            territoryName={plan.territoryName}
+            disabled={isLocked}
+            onAdded={onStopAdded}
+          />
+        )}
         {isLocked && (
-          <span className="route-board__locked-badge">Route locked — unlock to edit, or Print PDF</span>
+          <span className="route-board__locked-badge">Route locked — unlock to edit</span>
         )}
         <span className="route-board__assign">
           {assignedCount}/{plan.allStops.length} stops assigned
@@ -293,6 +363,7 @@ export default function RouteBoard({
               segment={segment}
               stops={stops}
               disabled={plan.status === "locked"}
+              onRemoveStop={!isLocked ? onRemoveStop : undefined}
             />
           ))}
         </div>
